@@ -1,0 +1,104 @@
+#include <Adafruit_LiquidCrystal.h>
+
+
+// Constants
+#define FRONT_SENSOR_PIN 2
+#define REAR_SENSOR_PIN 3
+#define DETECTED_DISTANCE 200
+
+
+#define RED_LED_PIN 6
+#define GREEN_LED_PIN 4
+#define BUZZER_PIN 5
+
+
+// Objects
+Adafruit_LiquidCrystal lcd(0);
+
+
+// Functions
+unsigned int measureDistance(int sensorPin) {
+ pinMode(sensorPin, OUTPUT);
+ digitalWrite(sensorPin, LOW);
+ delayMicroseconds(2);
+ digitalWrite(sensorPin, HIGH);
+ delayMicroseconds(5);
+ digitalWrite(sensorPin, LOW);
+
+
+ pinMode(sensorPin, INPUT);
+ unsigned long duration = pulseIn(sensorPin, HIGH);
+ unsigned int distance = duration / 29 / 2;
+
+
+ return distance;
+}
+
+
+void displayStatus(const char* location, const char* status, int distance) {
+ lcd.clear();
+ lcd.print(location);
+ lcd.print(status);
+ lcd.setCursor(0, 1);
+ lcd.print("Distance: ");
+ lcd.print(distance);
+ lcd.print(" cm");
+}
+
+
+void setup() {
+ pinMode(RED_LED_PIN, OUTPUT);
+ pinMode(GREEN_LED_PIN, OUTPUT);
+ pinMode(BUZZER_PIN, OUTPUT);
+
+
+ digitalWrite(GREEN_LED_PIN, HIGH);
+
+
+ lcd.begin(16, 2);
+ lcd.clear();
+}
+
+
+void loop() {
+ bool isFrontDetected = false;
+ bool isRearDetected = false;
+
+
+ int frontDistance = measureDistance(FRONT_SENSOR_PIN);
+ int rearDistance = measureDistance(REAR_SENSOR_PIN);
+
+
+ if (frontDistance <= DETECTED_DISTANCE) {
+   isFrontDetected = true;
+   displayStatus("Front: ", "Suspect", frontDistance);
+ } else {
+   displayStatus("Front: ", "Safe", frontDistance);
+ }
+
+
+ delay(500);
+
+
+ if (rearDistance <= DETECTED_DISTANCE) {
+   isRearDetected = true;
+   displayStatus("Rear: ", "Suspect", rearDistance);
+ } else {
+   displayStatus("Rear: ", "Safe", rearDistance);
+ }
+
+
+ delay(500);
+
+
+ if (isFrontDetected || isRearDetected) {
+   digitalWrite(RED_LED_PIN, HIGH);
+   digitalWrite(GREEN_LED_PIN, LOW);
+   tone(BUZZER_PIN, 1000);
+   delay(2000);
+   digitalWrite(RED_LED_PIN, LOW);
+   noTone(BUZZER_PIN);
+ } else {
+   digitalWrite(GREEN_LED_PIN, HIGH);
+ }
+}
