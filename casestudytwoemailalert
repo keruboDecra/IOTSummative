@@ -1,0 +1,42 @@
+% Store the channel ID for the moisture sensor channel.
+channelID = 2118676;
+
+% Provide the ThingSpeak alerts API key.  All alerts API keys start with TAK.
+alertApiKey = 'TAKFclA5QPAaXoEDepC';
+
+% Set the address for the HTTTP call
+alertUrl="https://api.thingspeak.com/alerts/send";
+
+% webwrite uses weboptions to add required headers.  Alerts needs a ThingSpeak-Alerts-API-Key header.
+options = weboptions("HeaderFields", ["ThingSpeak-Alerts-API-Key", alertApiKey ]);
+
+% Set the email subject.
+alertSubject = sprintf("Irrigation action needed");
+
+% Read the recent data.
+moistureData = thingSpeakRead(channelID,'NumPoints',1,'Fields', 3);
+
+% Check to make sure the data was read correctly from the channel.
+if isempty(moistureData)
+   alertBody = 'No data read';
+else
+   lastValue = moistureData(end);
+  
+   % Set the outgoing message
+   if lastValue > 620
+   alertBody = sprintf('Moisture is in level of %0.2f. You should stop irrigation', lastValue);
+   elseif lastValue < 220
+   alertBody = sprintf('Moisture is in level of %0.2f. You should start irrigation', lastValue);
+   else
+   alertBody = ''; % Do not send any alert when moisture is within the acceptable range
+   end
+end
+
+% Catch errors so the MATLAB code does not disable a TimeControl if it fails
+try
+   webwrite(alertUrl , "body", alertBody, "subject", alertSubject, options);
+catch someException
+   fprintf("Failed to send alert: %s\n", someException.message);
+End
+
+
