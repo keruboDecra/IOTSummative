@@ -1,0 +1,78 @@
+#include <ESP8266WiFi.h>
+#include <DHT.h>
+#include <LiquidCrystal.h>
+#include <ThingSpeak.h>
+
+#define DHTPIN D5 // Connect DHT11 data pin to NodeMCU D5 (GPIO 14)
+#define DHTTYPE DHT11 // Set the sensor type to DHT11
+#define SOIL_MOISTURE_PIN A0 // Connect soil moisture sensor to NodeMCU A0
+
+// Initialize the LCD with the corresponding control pins
+LiquidCrystal lcd(D0, D1, D2, D3, D4, D6);
+
+// Initialize the DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+const char* ssid = "Samwel";
+const char* password = "Sammiel@12345";
+unsigned long myChannelNumber = 2118676;
+const char* myWriteAPIKey = "D33X9ER7Q1GNHHOG";
+
+WiFiClient client;
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  lcd.begin(16, 2); // Set up the display's number of columns and rows
+  dht.begin(); // Initialize the DHT11 sensor
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  // Read temperature and humidity data from the DHT11 sensor
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  // Read soil moisture data
+  int soilMoisture = analogRead(SOIL_MOISTURE_PIN);
+
+  // Print sensor values to Serial Monitor for debugging
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.print("C, Humidity: ");
+  Serial.print(humidity);
+  Serial.print("%, Soil Moisture: ");
+  Serial.println(soilMoisture);
+
+  // Display temperature, humidity, and soil moisture data on the LCD
+  lcd.setCursor(0, 0);
+  lcd.print("T:");
+  lcd.print(temperature);
+  lcd.print("C H:");
+  lcd.print(humidity);
+  lcd.print("%");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Soil M.: ");
+  lcd.print(soilMoisture);
+
+  // Send data to ThingSpeak
+  ThingSpeak.setField(1, temperature);
+  ThingSpeak.setField(2, humidity);
+  ThingSpeak.setField(3, soilMoisture);
+
+  int responseCode = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+  Serial.print("ThingSpeak response code: ");
+  Serial.println(responseCode);
+
+  delay(20000); // Wait for 20 seconds before taking the next reading
+}
